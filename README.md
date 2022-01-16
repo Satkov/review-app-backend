@@ -1,5 +1,5 @@
 ```
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 cd reccy
 python manage.py makemigrations
 python manage.py migrate
