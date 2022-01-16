@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+.env
 .idea
 reccy/sent_emails
 .Python
