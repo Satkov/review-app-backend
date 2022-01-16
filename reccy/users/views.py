@@ -50,7 +50,6 @@ class EmailConfirmationViewSet(mixins.CreateModelMixin,
 
 
 class SendJWTViewSet(mixins.CreateModelMixin,
-                     mixins.UpdateModelMixin,
                      GenericViewSet):
     """
     Принимает на вход почту, пароль и код подтверждения.
@@ -73,8 +72,8 @@ class SendJWTViewSet(mixins.CreateModelMixin,
 
 class RefreshJWTAPIView(APIView):
     """
-    Получает на вход почту и код подтверждения
-    возвращает
+    Получает на вход почту и код подтверждения,
+    обновляет токен
     """
     permission_classes = [AllowAny, ]
 
