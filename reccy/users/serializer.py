@@ -5,7 +5,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserConfirmation
-from .utils import UsernamePostfixGenerator, GetRequestFromContext, ConfirmCodeGenerator, SendVerificationCode
+from .utils import UsernamePostfixGenerator, GetRequestFromContext, ConfirmCodeGenerator, SendVerificationCode, \
+    IsConfirmationCodeIsCorrect
 
 User = get_user_model()
 
@@ -34,22 +35,21 @@ class UserJWTSerializer(serializers.ModelSerializer):
     def validate(self, data):
         email = data.get('email')
         confirmation_code = GetRequestFromContext(self.context).data.get('confirmation_code')
-        user_conf = UserConfirmation.objects.filter(
-            email=email, confirmation_code=confirmation_code).first()
-        if user_conf is None:
-            raise ValidationError(
-                'Confirmation code is not correct')
-        user_conf.delete()
+        IsConfirmationCodeIsCorrect(email, confirmation_code, True)
         return data
 
     def create(self, validated_data):
         username = f'User{UsernamePostfixGenerator()}'
-        user = User.objects.create(
+        user = User.objects.create_user(
             email=validated_data.get('email'),
             username=username
         )
         user.set_password(validated_data.get('password'))
+        user.save()
         return user
+
+    def update(self, instance, validated_data):
+        return instance
 
     def to_representation(self, instance):
         user = get_object_or_404(User, email=instance)

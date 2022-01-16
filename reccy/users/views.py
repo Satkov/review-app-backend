@@ -1,16 +1,22 @@
+from django.shortcuts import get_object_or_404
 from django.utils.datastructures import MultiValueDictKeyError
 from rest_framework import filters, mixins, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserConfirmation
+from .permissions import IsCurrentUserOrAdminOrReadOnly
 from .serializer import (UserConfirmationSerializer, UserJWTSerializer,
                          UsersViewSetSerializer)
 
 from django.contrib.auth import get_user_model
+
+from .utils import IsConfirmationCodeIsCorrect, IsFieldInRequest
 
 User = get_user_model()
 
@@ -38,10 +44,13 @@ class EmailConfirmationViewSet(mixins.CreateModelMixin,
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response('Check your Email', status=status.HTTP_201_CREATED, headers=headers)
+        return Response('Check your Email',
+                        status=status.HTTP_201_CREATED,
+                        headers=headers)
 
 
 class SendJWTViewSet(mixins.CreateModelMixin,
+                     mixins.UpdateModelMixin,
                      GenericViewSet):
     """
     Принимает на вход почту, пароль и код подтверждения.
@@ -62,16 +71,32 @@ class SendJWTViewSet(mixins.CreateModelMixin,
                         headers=headers)
 
 
+class RefreshJWTAPIView(APIView):
+    """
+    Получает на вход почту и код подтверждения
+    возвращает
+    """
+    permission_classes = [AllowAny, ]
+
+    def put(self, request):
+        email = IsFieldInRequest(request, 'email')
+        confirmation_code = IsFieldInRequest(request, 'confirmation_code')
+        if IsConfirmationCodeIsCorrect(email, confirmation_code, True):
+            user = get_object_or_404(User, email=email)
+            refresh = RefreshToken.for_user(user)
+            data = {'token': str(refresh.access_token)}
+            return Response(data, status=status.HTTP_200_OK)
+
+
 class UsersViewSet(viewsets.ModelViewSet):
     """
     ViewSet для работы с моделью User
     """
     queryset = User.objects.all().order_by('id')
     serializer_class = UsersViewSetSerializer
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsCurrentUserOrAdminOrReadOnly, ]
     filter_backends = [filters.SearchFilter]
-    search_fields = "username"
-    lookup_field = "username"
+    search_fields = ["=email"]
 
     @action(detail=False, methods=['GET', 'PATCH'],
             permission_classes=[IsAuthenticated, ])
