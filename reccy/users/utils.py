@@ -3,8 +3,12 @@ import math
 import uuid
 
 from django.core.mail import send_mail
+from django.utils.datastructures import MultiValueDictKeyError
 
 from reccy.settings import admin_email
+from rest_framework.exceptions import ValidationError
+
+from .models import UserConfirmation
 
 
 def ConfirmCodeGenerator(length):
@@ -39,3 +43,20 @@ def SendVerificationCode(email, code):
         [email],
         fail_silently=False,
     )
+
+
+def IsConfirmationCodeIsCorrect(email, code, delete):
+    user_conf = UserConfirmation.objects.filter(
+        email=email, confirmation_code=code).first()
+    if user_conf is None:
+        raise ValidationError({'errors': 'confirmation_code is required'})
+    if delete:
+        user_conf.delete()
+    return True
+
+
+def IsFieldInRequest(request, field):
+    try:
+        return request.data[field]
+    except MultiValueDictKeyError:
+        raise ValidationError({'errors': f'{field} is required'})
