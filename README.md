@@ -1,8 +1,34 @@
-```
+``` python
 pip3 install -r requirements.txt
 cd reccy
-python manage.py makemigrations
-python manage.py migrate
-python manage.py runserver
+python3 manage.py makemigrations
+python3 manage.py migrate
+python3 manage.py runserver
 ```
 go to http://127.0.0.1:8000/redoc
+
+
+# Авторизация
+-Токен действителен в течении 30 дней
+***Регистрация пользователей***
+1. [POST]Отправляешь почту на `api/v1/auth/email/`
+2. Пользователь получает код на почту и вводит его в приложении.
+3. [POST]Отправляешь код и почту на `api/v1/auth/token/`
+4. В ответе получаешь `access` и `refresh` токены.
+
+***Авторизация по паролю***
+1. [POST]Отправляешь почту и пароль на `api/v1/auth/token/password/`
+2. В ответе получаешь `access` и `refresh` токены.
+
+***Обновление токена***
+1. [POST] Отправляешь `refresh` токен на `api/v1/auth/token/refresh/`
+2. В ответе получаешь `access` токен.
+
+***В случае, если пользователь забыл пароль***
+1. [POST]Отправляешь почту на `api/v1/auth/email/`
+2. Пользователь получает код на почту и вводит его в приложении.
+3. [PUT]Отправляешь код и почту на `api/v1/auth/token/forgot_password/`
+4. Получаешь новый токен для этого пользователя.
+5. Просишь пользователя ввести новый пароль.
+6. [PATCH]Отправляешь новый пароль на `http://127.0.0.1:8000/api/v1/users/me/`, используя токен пользователя
+7. Просишь пользователя авторизоваться с новыйм паролем.
