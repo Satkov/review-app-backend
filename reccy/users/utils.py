@@ -35,6 +35,13 @@ def GetRequestFromContext(context):
     return request
 
 
+def DoesFieldInValidatedData(validated_data, field):
+    try:
+        return validated_data[field]
+    except KeyError:
+        return False
+
+
 def SendVerificationCode(email, code):
     send_mail(
         'authentication',
@@ -60,3 +67,11 @@ def GetFieldFromRequest(request, field):
         return request.data[field]
     except MultiValueDictKeyError:
         raise ValidationError({'errors': f'{field} is required'})
+
+
+def DeleteExistingUserConfirmationObj(request):
+    try:
+        if UserConfirmation.objects.filter(email=request.data['email']).exists():
+            UserConfirmation.objects.filter(email=request.data['email']).delete()
+    except MultiValueDictKeyError:
+        raise ValidationError({'errors': 'Email is required'})
