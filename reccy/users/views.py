@@ -1,22 +1,22 @@
 from django.shortcuts import get_object_or_404
-from django.utils.datastructures import MultiValueDictKeyError
-from rest_framework import filters, mixins, viewsets, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import mixins, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .filters import UserFilter
+from .pagination import LimitPaginator
+from .utils import IsConfirmationCodeIsCorrect, GetFieldFromRequest, DeleteExistingUserConfirmationObj
 from .models import UserConfirmation
 from .permissions import IsCurrentUserOrAdminOrReadOnly
 from .serializer import (UserConfirmationSerializer, UserJWTSerializer,
-                         UsersViewSetSerializer)
+                         UserSerializer)
 
 from django.contrib.auth import get_user_model
-
-from .utils import IsConfirmationCodeIsCorrect, GetFieldFromRequest
 
 User = get_user_model()
 
@@ -28,19 +28,14 @@ class EmailConfirmationViewSet(mixins.CreateModelMixin,
     удаляет UserConfirmation, если код уже запрашивался,
     сохраняет почту вместе с кодом в UserConfirmation,
     отправляет письмо с кодом подтверждения на почту
-    Возвращает только 201 статус код.
+    Возвращает только статус код.
     """
     queryset = UserConfirmation.objects.all()
     serializer_class = UserConfirmationSerializer
     permission_classes = [AllowAny, ]
 
     def create(self, request, *args, **kwargs):
-        try:
-            if UserConfirmation.objects.filter(email=request.data['email']).exists():
-                UserConfirmation.objects.filter(email=request.data['email']).delete()
-        except MultiValueDictKeyError:
-            raise ValidationError({'errors': 'Email is required'})
-
+        DeleteExistingUserConfirmationObj(request)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -90,18 +85,20 @@ class RefreshJWTAPIView(APIView):
                             status=status.HTTP_200_OK)
 
 
-class UsersViewSet(viewsets.ModelViewSet):
+class UsersViewSet(mixins.UpdateModelMixin, mixins.DestroyModelMixin,
+                   mixins.ListModelMixin, mixins.RetrieveModelMixin,
+                   GenericViewSet):
     """
     ViewSet для работы с моделью User
     """
     queryset = User.objects.all().order_by('id')
-    serializer_class = UsersViewSetSerializer
-    permission_classes = [IsCurrentUserOrAdminOrReadOnly, ]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ["=email"]
+    serializer_class = UserSerializer
+    pagination_class = LimitPaginator
+    permission_classes = [IsCurrentUserOrAdminOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filter_class = UserFilter
 
-    @action(detail=False, methods=['GET', 'PATCH'],
-            permission_classes=[IsAuthenticated, ])
+    @action(detail=False, methods=['GET', 'PATCH'])
     def me(self, request):
         user = self.request.user
         serializer = self.get_serializer(

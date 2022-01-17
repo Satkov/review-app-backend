@@ -26,6 +26,6 @@ v1_router.register(
 urlpatterns = [
     path('v1/auth/token/password/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('v1/auth/forgot_password/', RefreshJWTAPIView.as_view(), name='refresh_token'),
+    path('v1/auth/token/forgot_password/', RefreshJWTAPIView.as_view(), name='refresh_token'),
     path('v1/', include(v1_router.urls)),
 ]

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserConfirmation
 from .utils import UsernamePostfixGenerator, GetRequestFromContext, ConfirmCodeGenerator, SendVerificationCode, \
-    IsConfirmationCodeIsCorrect
+    IsConfirmationCodeIsCorrect, DoesFieldInValidatedData
 
 User = get_user_model()
 
@@ -26,6 +26,11 @@ class UserConfirmationSerializer(serializers.ModelSerializer):
 
 
 class UserJWTSerializer(serializers.ModelSerializer):
+    """
+    Проверяет верность кода подтверждения почты,
+    создает аккаунт, возвращает токены
+    """
+
     class Meta:
         fields = ('username', 'password', 'email',
                   'first_name', 'last_name')
@@ -41,14 +46,11 @@ class UserJWTSerializer(serializers.ModelSerializer):
         username = f'User{UsernamePostfixGenerator()}'
         user = User.objects.create_user(
             email=validated_data.get('email'),
-            username=username
+            username=username,
+            password=validated_data.get('password')
         )
-        user.set_password(validated_data.get('password'))
         user.save()
         return user
-
-    def update(self, instance, validated_data):
-        return instance
 
     def to_representation(self, instance):
         user = get_object_or_404(User, email=instance)
@@ -57,8 +59,16 @@ class UserJWTSerializer(serializers.ModelSerializer):
                 'access_token': str(tokens.access_token)}
 
 
-class UsersViewSetSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('username', 'password', 'email',
-                  'first_name', 'last_name', 'is_superuser')
         model = User
+        fields = ('email', 'id', 'username', 'first_name',
+                  'last_name', 'password', 'is_superuser')
+        # extra_kwargs = {'password': {'write_only': True}}
+
+    def update(self, instance, validated_data):
+        super().update(instance, validated_data)
+        if DoesFieldInValidatedData(validated_data, 'password'):
+            instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
