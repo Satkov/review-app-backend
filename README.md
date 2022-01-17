@@ -1,3 +1,4 @@
+# Развертывание проекта
 ``` python
 pip3 install -r requirements.txt
 cd reccy
@@ -5,7 +6,14 @@ python3 manage.py makemigrations
 python3 manage.py migrate
 python3 manage.py runserver
 ```
+# Создание супер пользователя
+```
+python3 manage.py createsuperuser
+```
+
 go to http://127.0.0.1:8000/redoc
+
+
 
 
 # Авторизация
