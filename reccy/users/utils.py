@@ -55,7 +55,7 @@ def IsConfirmationCodeIsCorrect(email, code, delete):
     return True
 
 
-def IsFieldInRequest(request, field):
+def GetFieldFromRequest(request, field):
     try:
         return request.data[field]
     except MultiValueDictKeyError:

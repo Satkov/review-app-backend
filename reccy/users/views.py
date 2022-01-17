@@ -16,7 +16,7 @@ from .serializer import (UserConfirmationSerializer, UserJWTSerializer,
 
 from django.contrib.auth import get_user_model
 
-from .utils import IsConfirmationCodeIsCorrect, IsFieldInRequest
+from .utils import IsConfirmationCodeIsCorrect, GetFieldFromRequest
 
 User = get_user_model()
 
@@ -28,6 +28,7 @@ class EmailConfirmationViewSet(mixins.CreateModelMixin,
     удаляет UserConfirmation, если код уже запрашивался,
     сохраняет почту вместе с кодом в UserConfirmation,
     отправляет письмо с кодом подтверждения на почту
+    Возвращает только 201 статус код.
     """
     queryset = UserConfirmation.objects.all()
     serializer_class = UserConfirmationSerializer
@@ -44,16 +45,16 @@ class EmailConfirmationViewSet(mixins.CreateModelMixin,
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response('Check your Email',
-                        status=status.HTTP_201_CREATED,
+        return Response(status=status.HTTP_201_CREATED,
                         headers=headers)
 
 
-class SendJWTViewSet(mixins.CreateModelMixin,
-                     GenericViewSet):
+class CreateNewUserSendJWTViewSet(mixins.CreateModelMixin,
+                                  GenericViewSet):
     """
     Принимает на вход почту, пароль и код подтверждения.
-    Если все верно - создает аккаунт и возвращает токен.
+    Если все верно - создает аккаунт.
+    Возвращает access и refresh токены.
     """
     queryset = User.objects.all()
     serializer_class = UserJWTSerializer
@@ -73,18 +74,20 @@ class SendJWTViewSet(mixins.CreateModelMixin,
 class RefreshJWTAPIView(APIView):
     """
     Получает на вход почту и код подтверждения,
-    обновляет токен
+    если все верно - обновляет токен.
+    Возвращает access и refresh токены.
     """
     permission_classes = [AllowAny, ]
 
     def put(self, request):
-        email = IsFieldInRequest(request, 'email')
-        confirmation_code = IsFieldInRequest(request, 'confirmation_code')
+        email = GetFieldFromRequest(request, 'email')
+        confirmation_code = GetFieldFromRequest(request, 'confirmation_code')
         if IsConfirmationCodeIsCorrect(email, confirmation_code, True):
             user = get_object_or_404(User, email=email)
-            refresh = RefreshToken.for_user(user)
-            data = {'token': str(refresh.access_token)}
-            return Response(data, status=status.HTTP_200_OK)
+            tokens = RefreshToken.for_user(user)
+            return Response({'refresh_token': str(tokens),
+                            'access_token': str(tokens.access_token)},
+                            status=status.HTTP_200_OK)
 
 
 class UsersViewSet(viewsets.ModelViewSet):

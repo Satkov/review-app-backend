@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserConfirmation
@@ -53,9 +52,9 @@ class UserJWTSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         user = get_object_or_404(User, email=instance)
-        refresh = RefreshToken.for_user(user)
-        data = {'token': str(refresh.access_token)}
-        return data
+        tokens = RefreshToken.for_user(user)
+        return {'refresh_token': str(tokens),
+                'access_token': str(tokens.access_token)}
 
 
 class UsersViewSetSerializer(serializers.ModelSerializer):
