@@ -1,3 +1,6 @@
+# Backend для регистрации и авторизации по почте в приложении reccy
+
+
 # Развертывание проекта
 ``` python
 pip3 install -r requirements.txt
